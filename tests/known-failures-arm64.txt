@@ -1,0 +1,2 @@
+# ninja_test failures expected on this slice, one per line: <Suite.Test>  # <reason>
+# Empty unless a run shows otherwise; build/run-ninja-test.sh fails on an unlisted failure and on a listed test that passes.
