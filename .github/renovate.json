@@ -1,0 +1,32 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": ["github>Mavergreen/shipyard"],
+  "customManagers": [
+    {
+      "customType": "regex",
+      "description": "ninja's release tags (vX.Y.Z). Renovate moves UPSTREAM_VERSION; the pins bot (.github/workflows/pins-bot.yml) writes the tag's commit and its tarball's SHA-256 into components/ninja/source on the branch.",
+      "managerFilePatterns": ["/^UPSTREAM_VERSION$/"],
+      "matchStrings": ["^(?<currentValue>\\S+)\\s*$"],
+      "depNameTemplate": "ninja-build/ninja",
+      "datasourceTemplate": "github-tags",
+      "extractVersionTemplate": "^v(?<version>.+)$"
+    },
+    {
+      "customType": "regex",
+      "description": "clang22 N-1: release N of a family product is built by the previous clang22 release, so clang22 may itself depend on ninja without a cycle.",
+      "managerFilePatterns": ["/^components/clang22/version$/"],
+      "matchStrings": ["^(?<currentValue>\\S+)\\s*$"],
+      "depNameTemplate": "Mavergreen/clang-22",
+      "datasourceTemplate": "github-releases",
+      "versioningTemplate": "regex:^(?<major>\\d+)\\.(?<minor>\\d+)\\.(?<patch>\\d+)-mavericks\\.(?<build>\\d+)$"
+    }
+  ],
+  "gitIgnoredAuthors": ["342268518+mavergreen-pins-bot[bot]@users.noreply.github.com"],
+  "packageRules": [
+    {
+      "description": "Renovate cannot compute a tarball SHA-256 or move a digest it does not read: the pins bot writes both into components/ninja/source on this branch.",
+      "matchDepNames": ["ninja-build/ninja"],
+      "prBodyNotes": ["components/ninja/source is written on this branch by .github/workflows/pins-bot.yml. If that bot failed, run `sh build/pin-source-tarball.sh` on this branch and commit components/ninja/source."]
+    }
+  ]
+}
