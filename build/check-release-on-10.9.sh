@@ -23,7 +23,8 @@ install_pkg() { sudo installer -pkg "$w/$pkg" -target / && /usr/local/bin/maverg
 # platform: /usr/local/mavergreen/bin reaches PATH only through a login shell's paths.d
 L() { /bin/bash -lc "$1"; }
 login_path() { [ "$(L 'command -v ninja')" = /usr/local/mavergreen/bin/ninja ]; }
-version() { [ "$(L 'ninja --version')" = "${V%-mavericks.*}" ]; }
+# platform: a 10.9 box can put another ninja ahead on PATH (pkgsrc's, on ultimate-hat), which would answer instead
+version() { [ "$(/usr/local/mavergreen/bin/ninja --version)" = "${V%-mavericks.*}" ]; }
 smoke() { sh "$HERE/build/smoke.sh" /usr/local/mavergreen/bin/ninja; }
 ninja_test() { sh "$HERE/build/run-ninja-test.sh" "$NT" "$HERE/tests/known-failures-x86_64.txt"; }
 uninstall() { sudo /usr/local/bin/mavergreen uninstall ninja && [ ! -e /usr/local/mavergreen/ninja ] && [ ! -e /usr/local/mavergreen/bin/ninja ]; }

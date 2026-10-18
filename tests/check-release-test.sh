@@ -15,4 +15,6 @@ done
 grep -q 'then step ninja_test ninja_test; else echo "SKIP ninja_test (none given)"; fi' "$C" \
   || fail "check-release-on-10.9.sh must run ninja_test when given one and print SKIP ninja_test (none given) otherwise"
 grep -q '/usr/local/mavergreen/bin/ninja' "$C" || fail "the login-path step must name /usr/local/mavergreen/bin/ninja"
+grep -q '^version() { \[ "$(/usr/local/mavergreen/bin/ninja --version)"' "$C" \
+  || fail "the version step must ask the installed ninja, not whichever ninja PATH finds first"
 echo "PASS: check-release"
