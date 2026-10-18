@@ -10,6 +10,8 @@ has() { printf '%s\n' "$code" | grep -q -e "$1"; }
 
 printf '%s\n' "$code" | awk '/^  pull_request:/{f=1;next} f&&/branches:/{print;exit}' | grep -q '\[main\]' \
   || fail "release.yml must build pull requests to main: Renovate's automerge waits on that check"
+printf '%s\n' "$code" | awk '/^  push:/{f=1;next} f&&/branches/{print;exit}' | grep -q "branches-ignore: \['renovate/\*\*'\]" \
+  || fail "release.yml must build every branch push but Renovate's: a branch goes green before main does"
 has 'sh build/build.sh' || fail "release.yml must build ninja"
 grep -q 'compat-gate.sh' "$ROOT/build/build.sh" || fail "build.sh must gate ninja as 10.9-safe before staging it"
 has 'sh build/package-pkg.sh' || fail "release.yml must package ninja"
