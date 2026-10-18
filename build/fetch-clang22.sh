@@ -8,7 +8,7 @@ REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 . "$REPO_ROOT/build/msc.sh"
 mode="${MAVERICKS_MODE:-$(sh "$SHIPYARD_SCRIPTS/mavericks_mode.sh")}"
 inst="${CLANG22_INSTALLED:-/usr/local/mavergreen/clang22}"
-ok() { for b in clang clang++ ld64.lld llvm-lipo llvm-ar llvm-ranlib; do [ -x "$1/bin/$b" ] || return 1; done; }
+ok() { for b in clang clang++ ld64.lld llvm-lipo llvm-ar llvm-ranlib llvm-otool llvm-nm llvm-strings llvm-strip llvm-objdump; do [ -x "$1/bin/$b" ] || return 1; done; }
 case "$mode" in
   cross) d="$WORK/clang22/$CLANG22_VERSION/cross"
          ok "$d" || sh "$SHIPYARD_SCRIPTS/fetch_product_pkg.sh" --asset "mavericks-clang-22-cross-$CLANG22_VERSION.pkg" \
@@ -20,5 +20,5 @@ case "$mode" in
             clang22 "$CLANG22_VERSION" "$d" >/dev/null ;;
   *) echo "fetch-clang22: unknown mode '$mode'" >&2; exit 2 ;;
 esac
-ok "$d" || { echo "fetch-clang22: $d lacks clang, clang++, ld64.lld, llvm-lipo, llvm-ar or llvm-ranlib" >&2; exit 1; }
+ok "$d" || { echo "fetch-clang22: $d lacks one of clang, clang++, ld64.lld and llvm-{lipo,ar,ranlib,otool,nm,strings,strip,objdump}" >&2; exit 1; }
 echo "$d"

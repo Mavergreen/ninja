@@ -19,9 +19,12 @@ MK="${NINJA_BUILD_MAKE:-$(sh "$REPO_ROOT/build/fetch-make.sh")/bin/make}"
 B="$WORK/b-$A"; rm -rf "$B"
 # platform: ninja's CMakeLists.txt turns on LTO for Release, so its archives hold LLVM 22 bitcode that
 #           10.9's /usr/bin/ar cannot read; clang22's own llvm-ar and llvm-ranlib read it on every host
+# platform: CMake runs `strip -u -r` and asks `xcrun --find tapi` in every configure unless told which, and
+#           on 10.9 both are Command Line Tools names; nothing here strips or makes a .tbd
 set -- -G "Unix Makefiles" -S "$SRC" -B "$B" -DCMAKE_TOOLCHAIN_FILE="$TC" -DCMAKE_OSX_ARCHITECTURES="$A" \
   -DCMAKE_MAKE_PROGRAM="$MK" -DCMAKE_C_COMPILER="$CL/bin/clang" -DCMAKE_CXX_COMPILER="$CL/bin/clang++" \
   -DCMAKE_AR="$CL/bin/llvm-ar" -DCMAKE_RANLIB="$CL/bin/llvm-ranlib" \
+  -DCMAKE_STRIP="$CL/bin/llvm-strip" -DCMAKE_TAPI=/usr/bin/false \
   -DCMAKE_BUILD_TYPE=Release -DRE2C=RE2C-NOTFOUND -DNINJA_PYTHON=python3 -DBUILD_TESTING=ON \
   -DCMAKE_DISABLE_FIND_PACKAGE_GTest=ON -DFETCHCONTENT_FULLY_DISCONNECTED=ON -DFETCHCONTENT_SOURCE_DIR_GOOGLETEST="$GT"
 if [ "$A" = arm64 ]; then
