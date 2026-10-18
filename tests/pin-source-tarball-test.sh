@@ -13,10 +13,11 @@ T="$(mktemp -d "${TMPDIR:-/tmp}/pin-source-tarball.XXXXXX")"
 trap 'rm -rf "$T"' EXIT
 T="$(CDPATH='' cd -P -- "$T" && pwd -P)"
 R="$T/repo"; V="$R/components/ninja/source"
-mkdir -p "$R/build" "$R/components/ninja" "$R/components/clang22" "$T/shipyard" "$T/tarballs" "$T/tmp"
+mkdir -p "$R/build" "$R/components/ninja" "$R/components/clang22" "$R/components/make" "$T/shipyard" "$T/tarballs" "$T/tmp"
 cp "$ROOT/build/pin-source-tarball.sh" "$ROOT/build/versions.sh" "$ROOT/build/msc.sh" "$R/build/"
 cp "$SHIPYARD/lib.sh" "$T/shipyard/lib.sh"
 cp "$ROOT/components/clang22/version" "$R/components/clang22/"; echo 1.13.2 > "$R/UPSTREAM_VERSION"
+cp "$ROOT/components/make/version" "$R/components/make/"
 cp "$SHIPYARD/mavericks_fetch.sh" "$T/shipyard/mavericks_fetch.sh"
 g="$T/up/ninja"; mkdir -p "$g/sub"
 git -C "$g" init -q; git -C "$g" config user.email t@t; git -C "$g" config user.name t

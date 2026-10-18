@@ -19,8 +19,9 @@ cat > "$t/up/ninja-$D/CMakeLists.txt" <<EOF
 EOF
 ( cd "$t/up" && tar czf "$t/codeload/ninja-build/ninja/tar.gz/$D" "ninja-$D" )
 NS="$(shasum -a 256 < "$t/codeload/ninja-build/ninja/tar.gz/$D" | cut -c1-64)"
-mkdir -p "$t/repo/components/ninja" "$t/repo/components/clang22" "$t/repo/build"
+mkdir -p "$t/repo/components/ninja" "$t/repo/components/clang22" "$t/repo/components/make" "$t/repo/build"
 cp "$ROOT"/build/*.sh "$t/repo/build/"; cp "$ROOT/UPSTREAM_VERSION" "$t/repo/"; cp "$ROOT/components/clang22/version" "$t/repo/components/clang22/"
+cp "$ROOT/components/make/version" "$t/repo/components/make/"
 printf 'REPO=https://github.com/ninja-build/ninja.git\nDIGEST=%s\nTARBALL_SHA256=%s\n' "$D" "$NS" > "$t/repo/components/ninja/source"
 with() { MAVERICKS_BUILD_ROOT="$t/root" MAVERICKS_SOURCE_CACHE="$t/cache" MAVERICKS_CODELOAD="file://$t/codeload" \
   NINJA_GTEST_BASE="file://$t/rel" "$@"; }

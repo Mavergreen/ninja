@@ -13,8 +13,9 @@ GT="$(sh "$REPO_ROOT/build/fetch-googletest.sh" "$SRC")"
 CL="$(sh "$REPO_ROOT/build/fetch-clang22.sh")"
 SC="$(command -v shipyard-cmake || echo /usr/local/mavergreen/bin/shipyard-cmake)"
 TC="$(dirname "$SHIPYARD_SCRIPTS")/MavericksToolchain.cmake"
-# platform: the host's make, never one PATH or an inherited MAKE offers (CMake picked pkgsrc's gmake in the spike)
-MK="${NINJA_BUILD_MAKE:-/usr/bin/make}"
+# platform: the family's make by its path, never one PATH or an inherited MAKE offers (CMake picked pkgsrc's
+#           gmake in the spike, and 10.9's /usr/bin/make is a Command Line Tools stub)
+MK="${NINJA_BUILD_MAKE:-$(sh "$REPO_ROOT/build/fetch-make.sh")/bin/make}"
 B="$WORK/b-$A"; rm -rf "$B"
 # platform: ninja's CMakeLists.txt turns on LTO for Release, so its archives hold LLVM 22 bitcode that
 #           10.9's /usr/bin/ar cannot read; clang22's own llvm-ar and llvm-ranlib read it on every host

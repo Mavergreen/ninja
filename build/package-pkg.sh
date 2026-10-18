@@ -31,5 +31,5 @@ sh "$SHIPYARD_SCRIPTS/set_install_floor.sh" --identifier "$IDENTIFIER" --title "
 rm -f "$comp"
 sh "$SHIPYARD_SCRIPTS/build-info.sh" "$REPO_ROOT/dist/build-info-$variant.txt" \
   variant="$variant" arch="$host" prefix="$PREFIX" pkg="$(basename "$pkg")" identifier="$IDENTIFIER" \
-  ninja="$NINJA_VERSION" clang22="$CLANG22_VERSION"
+  ninja="$NINJA_VERSION" clang22="$CLANG22_VERSION" make="$MAKE_VERSION"
 echo "$pkg"

@@ -14,6 +14,9 @@ assert n["extractVersionTemplate"] == "^v(?<version>.+)$", "ninja tags are v-pre
 k = m["Mavergreen/clang-22"]
 assert k["managerFilePatterns"] == ["/^components/clang22/version$/"] and k["datasourceTemplate"] == "github-releases", "clang22 manager"
 assert k["versioningTemplate"].startswith("regex:") and "mavericks" in k["versioningTemplate"], "clang22 -mavericks.N versioning (check 13)"
+g = m["Mavergreen/make"]
+assert g["managerFilePatterns"] == ["/^components/make/version$/"] and g["datasourceTemplate"] == "github-releases", "make manager"
+assert g["versioningTemplate"] == k["versioningTemplate"], "make -mavericks.N versioning (check 13)"
 assert c["gitIgnoredAuthors"] == ["342268518+mavergreen-pins-bot[bot]@users.noreply.github.com"], "gitIgnoredAuthors"
 assert not any("automerge" in r for r in c.get("packageRules", [])), "no packageRule may set automerge: the shipyard preset decides"
 PY
