@@ -1,1 +1,2 @@
 /usr/lib/libSystem.B.dylib
+/usr/lib/libc++abi.dylib

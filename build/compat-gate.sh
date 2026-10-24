@@ -1,5 +1,5 @@
 #!/bin/sh
-# platform: macOS-only -- assert_binary_compatible.sh and clang22's llvm-objdump read Mach-O
+# platform: host-agnostic
 #   usage: compat-gate.sh <binary> "<arch ...>"     10.9-safe x86_64, 11.0 arm64, and only the expected dylibs
 set -eu
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
