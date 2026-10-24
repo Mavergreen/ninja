@@ -1,16 +1,19 @@
 #!/bin/sh
-# platform: macOS-only -- lipo-merge-tree.sh merges Mach-O slices and the arm64 ninja_test runs only on a Mac
+# platform: host-agnostic
 #   usage: build.sh     builds this host's slices (cross: x86_64 + arm64; 10.9: x86_64), tests the one this
 #          host can run, gates each, and stages $STAGE/bin/ninja and its COPYING; prints the ninja
 set -eu
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 . "$REPO_ROOT/build/versions.sh"
 . "$REPO_ROOT/build/msc.sh"
-mode="${MAVERICKS_MODE:-$(sh "$SHIPYARD_SCRIPTS/mavericks_mode.sh")}"
-case "$mode" in cross) slices="x86_64 arm64" ;; native) slices=x86_64 ;; *) echo "build: mode '$mode'" >&2; exit 2 ;; esac
+mode="$(sh "$REPO_ROOT/build/mode.sh")"
+case "$mode" in cross) slices="x86_64 arm64" ;; native|linux) slices=x86_64 ;; *) echo "build: mode '$mode'" >&2; exit 2 ;; esac
 # platform: never Rosetta -- the slice that runs is the host's own: x86_64 on an Intel Mac or 10.9, arm64 on
 #           Apple Silicon, even from a shell Rosetta translates (uname -m says x86_64 there)
-run="$(uname -m)"; [ "$(sysctl -n sysctl.proc_translated 2>/dev/null || :)" = 1 ] && run=arm64
+run=none
+if [ "$mode" != linux ]; then
+  run="$(uname -m)"; [ "$(sysctl -n sysctl.proc_translated 2>/dev/null || :)" = 1 ] && run=arm64
+fi
 for a in $slices; do
   b="$(sh "$REPO_ROOT/build/build-slice.sh" "$a")"
   sh "$REPO_ROOT/build/compat-gate.sh" "$b/ninja" "$a" >&2

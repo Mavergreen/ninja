@@ -32,7 +32,7 @@ shape() {
     || { echo "the pins job's checkout persists its credentials"; return 1; }
   grep -qx 'push:     needs: pins' "$T/jobs" || { echo "the push job does not need the pins job"; return 1; }
   [ "$(grep -A1 '^push:     permissions:$' "$T/jobs" | tail -1)" = 'push:       contents: read' ] \
-    && ! grep '^push:' "$T/jobs" | grep -q 'contents: write$\|actions: write' \
+    && ! grep '^push:' "$T/jobs" | grep -Eq '^push:       (contents|actions): write$' \
     || { echo "the push job's GITHUB_TOKEN does not read only"; return 1; }
   grep -qx 'push:         uses: actions/create-github-app-token@v3' "$T/jobs" \
     && grep -qx 'push:           client-id: ${{ vars.PINS_BOT_CLIENT_ID }}' "$T/jobs" \
@@ -47,8 +47,8 @@ shape() {
   grep -qxF "  group: pins-bot-\${{ github.ref }}\${{ github.actor == 'mavergreen-pins-bot[bot]' && format('-{0}', github.run_id) || '' }}" "$1" \
     && grep -qxF "pins:     if: github.actor != 'mavergreen-pins-bot[bot]'" "$T/jobs" \
     || { echo "the run the bot's own push starts can cancel the run that pushed, or checks again"; return 1; }
-  grep -qF "commit -q -m \"chore(pins): the ninja source's commit and tarball SHA-256\"" "$1" \
-    || { echo "the commit message is not chore(pins): the ninja source's commit and tarball SHA-256"; return 1; }
+  grep -qF "commit -q -m \"chore(pins): verified source and Linux compiler digests\"" "$1" \
+    || { echo "the commit message is not chore(pins): verified source and Linux compiler digests"; return 1; }
   grep -qF "components/ninja/source" "$1" && ! grep -q 'macports\|MacPorts' "$1" \
     || { echo "the committed path is not components/ninja/source"; return 1; }
 }
@@ -81,6 +81,6 @@ mutant "a dispatch" "dispatches a run" 's/^          git push origin.*/&\
 mutant "another committer" "not the pins-bot App's bot's" 's/342268518+mavergreen-pins-bot/1+someone/'
 mutant "a changed concurrency group" "can cancel the run that pushed" "s/ && format('-{0}', github.run_id) || ''//"
 mutant "the pins job running on the bot's own push" "can cancel the run that pushed" "/^    if: github.actor != 'mavergreen-pins-bot\[bot\]'\$/d"
-mutant "another commit message" "the commit message" "s/the ninja source's commit and tarball SHA-256/the tarball/"
+mutant "another commit message" "the commit message" "s/verified source and Linux compiler digests/the tarball/"
 mutant "another committed path" "the committed path" 's|components/ninja/source|components/ninja/version|'
 echo "pins-bot-workflow OK"

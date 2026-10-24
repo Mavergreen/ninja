@@ -26,6 +26,7 @@ jobs:
       contents: read
     outputs:
       pins: ${{ steps.pin.outputs.pins }}
+      linux_pin: ${{ steps.pin.outputs.linux_pin }}
     steps:
       - uses: actions/checkout@v7
         with:
@@ -41,10 +42,12 @@ jobs:
           set -eu
           pins="$(sh build/pins-bot.sh fill origin/main)"
           echo "pins=$pins" >> "$GITHUB_OUTPUT"
+          linux_pin="$(sh build/pin-linux-clang.sh fill origin/main)"
+          echo "linux_pin=$linux_pin" >> "$GITHUB_OUTPUT"
 
   push:
     needs: pins
-    if: needs.pins.outputs.pins != ''
+    if: needs.pins.outputs.pins != '' || needs.pins.outputs.linux_pin != ''
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -64,12 +67,15 @@ jobs:
       - name: Commit the pin to the branch, as the App, which starts release.yml on its new head
         env:
           PINS: ${{ needs.pins.outputs.pins }}
+          LINUX_PIN: ${{ needs.pins.outputs.linux_pin }}
           BRANCH: ${{ github.ref_name }}
         run: |
           set -eu
-          applied="$(sh build/pins-bot.sh apply $PINS)"
-          [ "$applied" = changed ] || { echo "the pin file already holds it"; exit 0; }
+          if [ -n "$PINS" ]; then sh build/pins-bot.sh apply $PINS; fi
+          if [ -n "$LINUX_PIN" ]; then sh build/pin-linux-clang.sh apply $LINUX_PIN; fi
+          git add components/ninja/source components/clang22/linux-sha256
+          git diff --cached --quiet && { echo "pins already current"; exit 0; }
           git -c user.name='mavergreen-pins-bot[bot]' -c user.email='342268518+mavergreen-pins-bot[bot]@users.noreply.github.com' \
-            commit -q -m "chore(pins): the ninja source's commit and tarball SHA-256" \
-            -m 'Written by .github/workflows/pins-bot.yml: its pins job checked, with git, that the tag'"'"'s commit is the tarball'"'"'s tree.' components/ninja/source
+            commit -q -m "chore(pins): verified source and Linux compiler digests" \
+            components/ninja/source components/clang22/linux-sha256
           git push origin "HEAD:refs/heads/$BRANCH"
