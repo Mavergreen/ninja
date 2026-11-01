@@ -69,4 +69,16 @@ for j in scan publish; do
   job "$j" | grep -q 'artifact: mavergreen-ninja' || fail "$j must use only the mavergreen-ninja artifact"
 done
 
+printf '%s\n' "$code" | grep -q '^      reconcile:$' || fail "workflow_dispatch declares the reconcile input the backstop sets"
+has 'release-needed.sh' || fail "a reconcile dispatch publishes only while release-needed.sh says PUBLISH"
+grep -q 'dispatch-field: reconcile=true' "$ROOT/.github/workflows/reconcile.yml" || fail "reconcile.yml dispatches with reconcile=true"
+job retry | grep -q 'uses: Mavergreen/shipyard/.github/workflows/retry-release.yml@v1' || fail "a retry job re-dispatches a release that lost its tag race"
+job retry | grep -q 'needs: \[ver, publish\]' || fail "retry needs publish"
+gate="$(job required)"
+printf '%s\n' "$gate" | grep -q 'name: required (release)' && printf '%s\n' "$gate" | grep -q 'if: always()' \
+  && printf '%s\n' "$gate" | grep -q 'uses: Mavergreen/shipyard/.github/actions/required-gate@v1' \
+  || fail "the required job is named 'required (release)', runs if: always() and uses the gate action"
+others="$(printf '%s\n' "$code" | sed -n '/^jobs:$/,$s/^  \([a-z][a-z-]*\):$/\1/p' | grep -vx required | sort | xargs)"
+gneeds="$(printf '%s\n' "$gate" | sed -n 's/^    needs: \[\(.*\)\]$/\1/p' | tr ',' '\n' | sed 's/ //g' | sort | xargs)"
+[ "$others" = "$gneeds" ] || fail "the required job must need every other job ($others), not ($gneeds)"
 echo "PASS: workflow invariants"

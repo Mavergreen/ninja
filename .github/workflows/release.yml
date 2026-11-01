@@ -11,6 +11,10 @@ on:
         description: "Cut a -mavericks.(N+1) repackage of the current upstream"
         type: boolean
         default: false
+      reconcile:
+        description: "Set by the nightly reconcile backstop"
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -36,9 +40,13 @@ jobs:
         env:
           GITHUB_EVENT_NAME: ${{ github.event_name }}
           LOCAL_RELEASE: ${{ inputs.local_release }}
+          RECONCILE: ${{ inputs.reconcile }}
+          GH_TOKEN: ${{ github.token }}
         run: |
           set -eu
-          mode="$(sh "$SHIPYARD_SCRIPTS/release-mode.sh")"
+          effective_local_release="$LOCAL_RELEASE"
+          if [ "$RECONCILE" = true ]; then effective_local_release=true; fi
+          mode="$(LOCAL_RELEASE="$effective_local_release" sh "$SHIPYARD_SCRIPTS/release-mode.sh")"
           out="$(sh build/version.sh "$mode")"
           full="$(printf '%s\n' "$out" | sed -n 's/^FULL=//p')"
           rel="$(printf '%s\n' "$out" | sed -n 's/^RELEASE=//p')"
@@ -48,6 +56,13 @@ jobs:
             push:refs/heads/main|workflow_dispatch:*) : ;;
             *) rel=no ;;
           esac
+          # spec: SKILL.md "A release is a declared state" -- a reconcile dispatch publishes only while no release carries this state
+          if [ "$rel" = yes ] && [ "$RECONCILE" = true ]; then
+            digest="$(sh "$SHIPYARD_SCRIPTS/release-state.sh")"
+            answer="$(sh "$SHIPYARD_SCRIPTS/release-needed.sh" --digest "$digest" --version "$full")"
+            echo "release-needed: $answer"
+            [ "$answer" = PUBLISH ] || rel=no
+          fi
           { echo "full=$full"; echo "release=$rel"; } >> "$GITHUB_OUTPUT"
           echo "version=$full publish=$rel"
 
@@ -218,3 +233,20 @@ jobs:
     permissions: { contents: write }
     uses: Mavergreen/shipyard/.github/workflows/publish-release.yml@v1
     with: { version: "${{ needs.ver.outputs.version }}", artifact: mavergreen-ninja }
+
+  retry:
+    needs: [ver, publish]
+    if: always() && needs.publish.result == 'failure'
+    permissions: { contents: read, actions: write }
+    uses: Mavergreen/shipyard/.github/workflows/retry-release.yml@v1
+    with: { version: "${{ needs.ver.outputs.version }}" }
+
+  required:
+    name: required (release)
+    if: always()
+    needs: [ver, build, vm-test, modern-smoke, scan, publish, retry]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: Mavergreen/shipyard/.github/actions/required-gate@v1
+        with:
+          needs: ${{ toJSON(needs) }}
