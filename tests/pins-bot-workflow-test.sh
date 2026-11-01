@@ -49,6 +49,8 @@ shape() {
     || { echo "the run the bot's own push starts can cancel the run that pushed, or checks again"; return 1; }
   grep -qF "commit -q -m \"chore(pins): verified source and Linux compiler digests\"" "$1" \
     || { echo "the commit message is not chore(pins): verified source and Linux compiler digests"; return 1; }
+  grep -qx 'push:         uses: Mavergreen/shipyard/.github/actions/install@v1' "$T/jobs" \
+    || { echo "the push job does not install shipyard, which build/pin-linux-clang.sh apply needs"; return 1; }
   grep -qF "components/ninja/source" "$1" && ! grep -q 'macports\|MacPorts' "$1" \
     || { echo "the committed path is not components/ninja/source"; return 1; }
 }
@@ -83,4 +85,5 @@ mutant "a changed concurrency group" "can cancel the run that pushed" "s/ && for
 mutant "the pins job running on the bot's own push" "can cancel the run that pushed" "/^    if: github.actor != 'mavergreen-pins-bot\[bot\]'\$/d"
 mutant "another commit message" "the commit message" "s/verified source and Linux compiler digests/the tarball/"
 mutant "another committed path" "the committed path" 's|components/ninja/source|components/ninja/version|'
+mutant "a push job without shipyard" "does not install shipyard" '/^    needs: pins$/,/^@@never@@/{/install@v1/d;}'
 echo "pins-bot-workflow OK"

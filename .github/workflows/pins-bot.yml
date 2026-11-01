@@ -64,6 +64,9 @@ jobs:
         with:
           token: ${{ steps.app.outputs.token }}
 
+      - name: Install mavericks-shipyard
+        uses: Mavergreen/shipyard/.github/actions/install@v1
+
       - name: Commit the pin to the branch, as the App, which starts release.yml on its new head
         env:
           PINS: ${{ needs.pins.outputs.pins }}
