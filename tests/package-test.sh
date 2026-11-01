@@ -47,4 +47,25 @@ case "$mode" in
   *) [ "$declared" = x86_64,arm64 ] || fail "the release pkg installs on Intel and Apple Silicon (declares '$declared')" ;;
 esac
 [ "$declared" = "$(archs_of "$P/bin/ninja" | tr ' ' ',')" ] || fail "the declared host architectures '$declared' must match the payload ninja's slices"
+info="$ROOT/dist/build-info-$([ "$mode" = native ] && echo dev || echo release).txt"
+[ -f "$info" ] || fail "packaging must write $info"
+key() { sed -n "s/^$1=//p" "$info"; }
+tool_line() { "$1" --version 2>/dev/null | sed -n 1p | tr -d '\n' | tr -s '[:space:]' '_'; }
+cached() { sed -n "s/^$1:[A-Z]*=//p" "$2/CMakeCache.txt"; }
+for d in "$WORK"/b-*; do
+  [ "$(key build-cmake)" = "$(tool_line "$(cached CMAKE_COMMAND "$d")")" ] \
+    || fail "build-info must name the cmake that configured $d ($(tool_line "$(cached CMAKE_COMMAND "$d")")), not '$(key build-cmake)'"
+  mp="$(cached CMAKE_MAKE_PROGRAM "$d")"
+  case "$(basename "$mp")" in
+    ninja) [ "$(key build-ninja)" = "$(tool_line "$mp")" ] || fail "build-info must name the ninja that built $d ($(tool_line "$mp")), not '$(key build-ninja)'"
+           [ -z "$(key make)" ] || fail "build-info names make, but $d was built by ninja" ;;
+    make) [ "$(key make)" = "$MAKE_VERSION" ] || fail "build-info must name the family make $MAKE_VERSION that built $d, not '$(key make)'" ;;
+    *) fail "$d was built by $mp, which build-info cannot name" ;;
+  esac
+done
+for d in "$WORK"/updater-*; do
+  [ "$(key updater-cmake)" = "$(tool_line "$(cached CMAKE_COMMAND "$d")")" ] || fail "build-info must name the cmake that configured $d"
+  mp="$(cached CMAKE_MAKE_PROGRAM "$d")"
+  [ "$(key updater-build-tool)" = "$(basename "$mp"):$(tool_line "$mp")" ] || fail "build-info must name the build tool that built $d ($mp)"
+done
 echo "PASS: package"

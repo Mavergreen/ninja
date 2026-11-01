@@ -3,6 +3,7 @@
 #   usage: package-pkg.sh     wraps the staged ninja and its updater into dist/ninja-<version>.pkg
 #          (an x86_64-only stage, as a 10.9 build makes: dist/ninja-<version>-x86_64-dev.pkg, never
 #          published). NINJA_UPDATER_APP names a built ninja-updater.app to package instead of building one.
+#          build-info records the build tools that $WORK/build-tools.txt and the updater's build-tools.txt name.
 set -eu
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 . "$REPO_ROOT/build/versions.sh"
@@ -33,7 +34,12 @@ pkg="$REPO_ROOT/dist/$SHORT-$VER$suffix.pkg"
 sh "$SHIPYARD_SCRIPTS/set_install_floor.sh" --identifier "$IDENTIFIER" --title "ninja for Mavericks $VER" \
   --component "$comp" --out "$pkg" --min-os 10.9.5 --host-arch "$host" --require-scripts >/dev/null
 rm -f "$comp"
-sh "$SHIPYARD_SCRIPTS/build-info.sh" "$REPO_ROOT/dist/build-info-$variant.txt" \
-  variant="$variant" arch="$host" prefix="$PREFIX" pkg="$(basename "$pkg")" identifier="$IDENTIFIER" \
-  ninja="$NINJA_VERSION" clang22="$CLANG22_VERSION" make="$MAKE_VERSION"
+set -- variant="$variant" arch="$host" prefix="$PREFIX" pkg="$(basename "$pkg")" identifier="$IDENTIFIER" \
+  ninja="$NINJA_VERSION" clang22="$CLANG22_VERSION"
+for f in "$WORK/build-tools.txt" "$(dirname "$app")/build-tools.txt"; do
+  [ -s "$f" ] || { echo "package-pkg: no $f -- the build tools that built what ships must be recorded" >&2; exit 1; }
+  while IFS= read -r l; do set -- "$@" "$l"; done < "$f"
+done
+rm -f "$REPO_ROOT"/dist/build-info-*.txt
+sh "$SHIPYARD_SCRIPTS/build-info.sh" "$REPO_ROOT/dist/build-info-$variant.txt" "$@"
 echo "$pkg"

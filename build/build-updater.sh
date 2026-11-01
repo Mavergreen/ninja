@@ -30,4 +30,6 @@ else
   sh "$SHIPYARD_SCRIPTS/lipo-merge-tree.sh" --a "$WORK/updater-x86_64/ninja-updater.app" \
     --b "$WORK/updater-arm64/ninja-updater.app" --out "$out" --require-archs "x86_64 arm64" >&2
 fi
+for s in $slices; do sh "$REPO_ROOT/build/build-tools.sh" "$WORK/updater-${s%%:*}" updater; done | sort -u > "$WORK/updater/build-tools.txt"
+[ "$(cut -d= -f1 "$WORK/updater/build-tools.txt" | sort | uniq -d)" = "" ] || { echo "build-updater: the slices were built by different tools" >&2; exit 1; }
 echo "$out"

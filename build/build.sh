@@ -37,4 +37,6 @@ fi
 sh "$REPO_ROOT/build/compat-gate.sh" "$STAGE/bin/ninja" "$slices" >&2
 cp "$(sh "$REPO_ROOT/build/fetch-ninja.sh")/COPYING" "$STAGE/share/doc/ninja/COPYING"
 for a in $slices; do cp "$WORK/b-$a/ninja_test" "$WORK/test/ninja_test-$a"; done
+for a in $slices; do sh "$REPO_ROOT/build/build-tools.sh" "$WORK/b-$a" build; done | sort -u > "$WORK/build-tools.txt"
+[ "$(cut -d= -f1 "$WORK/build-tools.txt" | sort | uniq -d)" = "" ] || { echo "build: the slices were built by different tools:" >&2; cat "$WORK/build-tools.txt" >&2; exit 1; }
 echo "$STAGE/bin/ninja"

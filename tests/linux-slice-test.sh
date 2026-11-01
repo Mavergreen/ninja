@@ -28,14 +28,17 @@ esac
 SH
 cat > "$t/bin/cmake" <<'SH'
 #!/bin/sh
+if [ "$1" = --version ]; then echo "cmake version 9.9.9"; echo "CMake suite"; exit 0; fi
 if [ "$1" = --build ]; then
   a="${2##*/b-}"
   for f in ninja ninja_test; do printf '#!/bin/sh\n%s\ntouch "$FORBIDDEN"\nexit 1\n' "$a" > "$2/$f"; chmod +x "$2/$f"; done
 else
-  b=; for x in "$@"; do [ "$prev" = -B ] && b="$x"; prev="$x"; done
+  b=; mk=; for x in "$@"; do [ "$prev" = -B ] && b="$x"; case "$x" in -DCMAKE_MAKE_PROGRAM=*) mk="${x#*=}" ;; esac; prev="$x"; done
   mkdir -p "$b"; printf '%s\n' "$@" > "$CONFIG_ARGS-${b##*/}"
+  printf 'CMAKE_COMMAND:INTERNAL=%s\nCMAKE_MAKE_PROGRAM:FILEPATH=%s\n' "$0" "$mk" > "$b/CMakeCache.txt"
 fi
 SH
+printf '#!/bin/sh\n[ "$1" = --version ] && echo "1.99.0"\n' > "$t/bin/ninja"; chmod +x "$t/bin/ninja"
 chmod +x "$t/compiler/bin/llvm-lipo" "$t/bin/cmake"
 export PATH="$t/bin:$PATH" CONFIG_ARGS="$t/args" FORBIDDEN="$t/forbidden" MAVERICKS_MODE=linux MAVERICKS_BUILD_ROOT="$t/work" SHIPYARD_SCRIPTS="$t/sy"
 out="$(sh "$t/repo/build/build.sh")" || fail "build.sh failed on Linux"
@@ -54,5 +57,7 @@ grep -Fx -- "-DCMAKE_CXX_COMPILER_TARGET=arm64-apple-macos11.0" "$t/args-b-arm64
 grep -Fx -- "-DCMAKE_EXE_LINKER_FLAGS=-fuse-ld=lld --ld-path=$t/compiler/bin/ld64.lld -Wl,-dead_strip_dylibs" "$t/args-b-arm64" >/dev/null \
   || fail "the arm64 slice links with clang22's ld64.lld, never the host's ld"
 grep -F -- "-isystem /sdk-arm64/usr/include/c++/v1" "$t/args-b-arm64" >/dev/null || fail "the arm64 slice compiles against the 11.3 SDK's libc++ headers"
+[ "$(cat "$t/work/mavergreen-ninja/build-tools.txt")" = "build-cmake=cmake version 9.9.9
+build-ninja=1.99.0" ] || fail "Linux must record the runner's cmake and ninja that built the slices, and no make (got: $(cat "$t/work/mavergreen-ninja/build-tools.txt"))"
 if MAVERICKS_MODE=native sh "$t/repo/build/build-slice.sh" arm64 >/dev/null 2>&1; then fail "a 10.9 build must refuse the arm64 slice"; fi
 echo 'PASS: Linux builds both slices with host CMake/Ninja and clang22, merges them, and runs no target binary'
