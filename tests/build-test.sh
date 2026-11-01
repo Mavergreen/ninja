@@ -1,19 +1,23 @@
 #!/bin/sh
-# platform: macOS-only -- lipo reads the staged ninja
+# platform: host-agnostic
 set -eu
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 . "$ROOT/build/versions.sh"; . "$ROOT/build/msc.sh"
 fail() { echo "FAIL: $1"; exit 1; }
 N="$STAGE/bin/ninja"
 [ -x "$N" ] || { echo "not built (no $N) -- skipping"; exit 77; }
-if [ "$(sh "$SHIPYARD_SCRIPTS/mavericks_mode.sh")" = cross ]; then want="x86_64 arm64"; else want=x86_64; fi
-[ "$(lipo -info "$N" | sed -n "s/.*: //p" | xargs)" = "$want" ] || fail "the staged ninja must be exactly '$want' (got $(lipo -info "$N" | sed -n "s/.*: //p" | xargs))"
+CL="$(sh "$ROOT/build/fetch-clang22.sh")"
+if [ "$(sh "$ROOT/build/mode.sh")" = native ]; then want=x86_64; else want="x86_64 arm64"; fi
+got="$("$CL/bin/llvm-lipo" -info "$N" | sed -n "s/.*: //p" | xargs)"
+[ "$got" = "$want" ] || fail "the staged ninja must be exactly '$want' (got $got)"
 [ -s "$STAGE/share/doc/ninja/COPYING" ] || fail "the stage must carry ninja's COPYING (Apache-2.0)"
 [ "$(cd "$STAGE" && find . -type f | sort | tr '\n' ' ')" = "./bin/ninja ./share/doc/ninja/COPYING " ] \
   || fail "the stage holds only bin/ninja and its COPYING (got: $(cd "$STAGE" && find . -type f | tr '\n' ' '))"
-[ -x "$WORK/test/ninja_test-x86_64" ] || fail "build.sh must keep the x86_64 ninja_test for the 10.9 run"
+for a in $want; do
+  [ -x "$WORK/test/ninja_test-$a" ] || fail "build.sh must keep the $a ninja_test: CI runs it where that slice runs"
+done
 # platform: a build path or another package manager's prefix in what ships would make ninja depend on a tree a user's Mac doesn't have
-strs="$(strings -a "$N")"
+strs="$("$CL/bin/llvm-strings" -a "$N")"
 [ -n "$strs" ] || fail "strings read nothing from the staged ninja"
 rc=0; leak="$(printf '%s\n' "$strs" | grep -E "$WORK|$REPO_ROOT|/opt/pkg|/opt/local|/opt/homebrew|(^|[^a-z])/sw/")" || rc=$?
 [ "$rc" -le 1 ] || fail "grep failed (exit $rc) while scanning the staged ninja"

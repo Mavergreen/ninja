@@ -2,9 +2,9 @@
 # platform: macOS-only -- installer, sw_vers and the mavergreen helper; meant for real 10.9
 #   usage: check-release-on-10.9.sh <version> [<ninja_test>]
 #          Run ON Mac OS X 10.9: downloads ninja-<version>.pkg, verifies it against SHA256SUMS, installs it
-#          (sudo), uses ninja from a login shell, runs ninja_test if given, and uninstalls it. One PASS/FAIL
-#          line per step; exit 1 if any failed. MAVERICKS_RELEASE_BASE replaces the release's URL
-#          (file:///path/to/dist rehearses against a local build).
+#          (sudo), uses ninja from a login shell, launches its updater check-only, runs ninja_test if given,
+#          and uninstalls it. One PASS/FAIL line per step; exit 1 if any failed. MAVERICKS_RELEASE_BASE
+#          replaces the release's URL (file:///path/to/dist rehearses against a local build).
 set -u
 V="${1:-}"; NT="${2:-}"
 [ -n "$V" ] || { echo "usage: check-release-on-10.9.sh <version> [<ninja_test>]   (e.g. 1.13.2-mavericks.1)" >&2; exit 2; }
@@ -26,6 +26,7 @@ login_path() { [ "$(L 'command -v ninja')" = /usr/local/mavergreen/bin/ninja ]; 
 # platform: a 10.9 box can put another ninja ahead on PATH (pkgsrc's, on ultimate-hat), which would answer instead
 version() { [ "$(/usr/local/mavergreen/bin/ninja --version)" = "${V%-mavericks.*}" ]; }
 smoke() { sh "$HERE/build/smoke.sh" /usr/local/mavergreen/bin/ninja; }
+updater() { sh "$HERE/build/launch-updater.sh"; }
 ninja_test() { sh "$HERE/build/run-ninja-test.sh" "$NT" "$HERE/tests/known-failures-x86_64.txt"; }
 uninstall() { sudo /usr/local/bin/mavergreen uninstall ninja && [ ! -e /usr/local/mavergreen/ninja ] && [ ! -e /usr/local/mavergreen/bin/ninja ]; }
 step fetch fetch
@@ -33,6 +34,7 @@ step install install_pkg
 step login-path login_path
 step version version
 step smoke smoke
+step updater updater
 if [ -n "$NT" ]; then step ninja_test ninja_test; else echo "SKIP ninja_test (none given)"; fi
 step uninstall uninstall
 [ "$bad" = 0 ] && rm -rf "$w"

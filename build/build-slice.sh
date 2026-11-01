@@ -9,7 +9,7 @@ REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 A="${1:?usage: build-slice.sh x86_64|arm64}"
 case "$A" in x86_64|arm64) : ;; *) echo "build-slice: arch '$A' is neither x86_64 nor arm64" >&2; exit 2 ;; esac
 mode="$(sh "$REPO_ROOT/build/mode.sh")"
-[ "$mode" != linux ] || [ "$A" = x86_64 ] || { echo 'build-slice: Linux supports x86_64 only' >&2; exit 2; }
+[ "$mode" != native ] || [ "$A" = x86_64 ] || { echo 'build-slice: a 10.9 build makes x86_64 only' >&2; exit 2; }
 SRC="$(sh "$REPO_ROOT/build/fetch-ninja.sh")"
 GT="$(sh "$REPO_ROOT/build/fetch-googletest.sh" "$SRC")"
 CL="$(sh "$REPO_ROOT/build/fetch-clang22.sh")"
@@ -42,9 +42,10 @@ if [ "$A" = arm64 ]; then
   #       runtimes are x86_64 only, so arm64 runs without it, against the 11.3 SDK's own libc++ headers
   #       (LLVM 22's headers need symbols macOS 11's libc++ lacks)
   SDK113="$(sh "$SHIPYARD_SCRIPTS/fetch_sdk.sh" --arch arm64)"
-  set -- "$@" -DCMAKE_C_FLAGS=--no-default-config \
+  set -- "$@" -DCMAKE_C_COMPILER_TARGET=arm64-apple-macos11.0 -DCMAKE_CXX_COMPILER_TARGET=arm64-apple-macos11.0 \
+    -DCMAKE_C_FLAGS=--no-default-config \
     -DCMAKE_CXX_FLAGS="--no-default-config -nostdinc++ -isystem $SDK113/usr/include/c++/v1" \
-    -DCMAKE_EXE_LINKER_FLAGS="--ld-path=$CL/bin/ld64.lld -Wl,-dead_strip_dylibs"
+    -DCMAKE_EXE_LINKER_FLAGS="-fuse-ld=lld --ld-path=$CL/bin/ld64.lld -Wl,-dead_strip_dylibs"
 else
   # platform: clang22's clang++.cfg links libobjc and three frameworks ninja never uses unless dead-stripped
   set -- "$@" -DCMAKE_EXE_LINKER_FLAGS=-Wl,-dead_strip_dylibs

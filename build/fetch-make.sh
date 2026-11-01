@@ -1,7 +1,8 @@
 #!/bin/sh
-# platform: macOS-only -- fetch_product_pkg.sh expands the make pkg with pkgutil
-#   usage: fetch-make.sh     prints the prefix of the family's GNU make (components/make/version); its bin/make
-#          is universal, so one pkg serves the x86_64 10.9 host and the arm64 runner
+# platform: host-agnostic
+#   usage: fetch-make.sh     prints the prefix of the family's GNU make (components/make/version), which a Mac's
+#          build runs; its bin/make is universal, so one pkg serves 10.9 and Apple Silicon. Linux builds with
+#          the host's CMake and Ninja instead
 # platform: 10.9's /usr/bin/make is a Command Line Tools stub, and a modern Mac's is Xcode's
 set -eu
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"

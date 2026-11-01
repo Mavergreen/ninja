@@ -7,9 +7,9 @@ The *own upstream* is ninja; an ingredient is anything else the artifact is buil
 |---|---|---|---|
 | ninja source (own upstream) | `UPSTREAM_VERSION`, with the tag's commit and tarball SHA-256 in `components/ninja/source` | ✅ `github-tags` on `ninja-build/ninja`; the pins bot writes `components/ninja/source` | cuts `<ver>-mavericks.1` |
 | googletest (ninja's tests; not shipped) | ninja's own `CMakeLists.txt` (URL and SHA-256), inside the pinned source | ✅ moves with `UPSTREAM_VERSION` | rebuild and test |
-| clang22 N−1 (compiler, linker; the x86_64 slice's static libc++ and Recaulk, with the system C++ ABI and unwinder) | `components/clang22/version`, plus the Linux archive digest in `components/clang22/linux-sha256` | ✅ `github-releases` on `Mavergreen/clang-22`, `-mavericks.N` versioning; pins bot verifies and records the matching Linux archive | repackage → `-mavericks.(N+1)` |
+| clang22 N−1 (compiler, linker, Mach-O tools; the x86_64 slice's static libc++ and Recaulk, with the system C++ ABI and unwinder; builds the updater too) | `components/clang22/version`, plus the Linux archive digest in `components/clang22/linux-sha256` | ✅ `github-releases` on `Mavergreen/clang-22`, `-mavericks.N` versioning; pins bot verifies and records the matching Linux archive | repackage → `-mavericks.(N+1)` |
 | Recaulk (`librecaulk.a`, bundled in clang22 N−1; x86_64 only: `clock_gettime` and kin for libc++'s chrono) | `components/clang22/version` (moves with clang22) | ✅ via the clang22 pin | repackage → `-mavericks.(N+1)` |
-| GNU make (runs the slice builds; universal, so the same pkg on 10.9 and the arm64 runner) | `components/make/version` | ✅ `github-releases` on `Mavergreen/make`, `-mavericks.N` versioning | repackage → `-mavericks.(N+1)` |
+| GNU make (runs a Mac's slice builds; universal, so the same pkg on 10.9 and Apple Silicon; Linux uses the host's Ninja) | `components/make/version` | ✅ `github-releases` on `Mavergreen/make`, `-mavericks.N` versioning | repackage → `-mavericks.(N+1)` |
 | MacOSX10.9 and MacOSX11.3 SDKs | shipyard `fetch_sdk.sh` (pinned by hash) | ✅ moves with shipyard `@v1` | moving tag |
 | Sparkle 1.27.3 (embedded in `ninja-updater.app`) | shipyard `fetch_sparkle_framework.sh` (pinned by hash) | ✅ moves with shipyard `@v1` | moving tag |
 
@@ -22,22 +22,24 @@ file for file. By hand: `sh build/pin-source-tarball.sh` (needs git).
 
 ## Build
 
-On Mac hosts, each slice is configured by `shipyard-cmake -G "Unix Makefiles"` against ninja's own `CMakeLists.txt` and
-built by the family's GNU `make` (`components/make/version`), with clang22 N−1: x86_64 against MacOSX10.9.sdk (10.9), arm64 against MacOSX11.3.sdk
-(11.0). re2c is never used (the tarball's generated lexers are). On a modern Mac the slices are merged
-into one file; on 10.9 the build makes x86_64 alone, named `-x86_64-dev`, never published. The merge uses the host's `lipo` (Xcode's, via shipyard's
-`lipo-merge-tree.sh`), not clang22's llvm-lipo.
-
-On Linux, host-native CMake and Ninja build the x86_64 Mavericks slice using the same pinned
-compiler version and SDK. The Linux archive digest moves with that version; it is verified against
-the actual release bytes before the pins bot writes it. Build and cache paths stay on local disk.
+Each slice is built by clang22 N−1 (shipyard's `fetch_clang22.sh`: the Linux archive on Linux, the cross
+pkg on a modern Mac, the native pkg on 10.9) against ninja's own `CMakeLists.txt`: x86_64 against
+MacOSX10.9.sdk (10.9), arm64 against MacOSX11.3.sdk (11.0). re2c is never used (the tarball's generated
+lexers are). On Linux, the host's CMake and Ninja run the build; on a Mac, `shipyard-cmake -G "Unix
+Makefiles"` and the family's GNU `make` (`components/make/version`). Linux and a modern Mac build both
+slices and merge them into one file with clang22's `llvm-lipo` (shipyard's `lipo-merge-tree.sh`); 10.9
+builds x86_64 alone, packaged as `-x86_64-dev`, never published. The Sparkle updater is built the same
+way, one configure per arch with clang22, and merged likewise. Packaging runs on shipyard's stevedore
+seams, on any host. The Linux archive digest moves with the clang22
+version; it is verified against the release's bytes before the pins bot writes it. Build and cache
+paths stay on local disk.
 
 ## Running the shipped ninja
 
 CI builds on an Apple Silicon runner, where the arm64 slice's `ninja_test` and smoke run. The x86_64
 slice never runs there: the `vm-test` job boots Mac OS X 10.9.5 with `Mavergreen/mavericks-vm`,
-installs the built pkg and runs `build/check-release-on-10.9.sh` with the x86_64 `ninja_test`.
-Publishing waits for it.
+installs the built pkg and runs `build/check-release-on-10.9.sh` with the x86_64 `ninja_test`, which
+also launches the updater check-only. Publishing waits for it.
 
 ## Declared state
 
