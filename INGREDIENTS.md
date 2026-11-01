@@ -30,16 +30,17 @@ Makefiles"` and the family's GNU `make` (`components/make/version`). Linux and a
 slices and merge them into one file with clang22's `llvm-lipo` (shipyard's `lipo-merge-tree.sh`); 10.9
 builds x86_64 alone, packaged as `-x86_64-dev`, never published. The Sparkle updater is built the same
 way, one configure per arch with clang22, and merged likewise. Packaging runs on shipyard's stevedore
-seams, on any host. The Linux archive digest moves with the clang22
+seams, so CI builds, tests, packages and signs on Linux. The Linux archive digest moves with the clang22
 version; it is verified against the release's bytes before the pins bot writes it. Build and cache
 paths stay on local disk.
 
 ## Running the shipped ninja
 
-CI builds on an Apple Silicon runner, where the arm64 slice's `ninja_test` and smoke run. The x86_64
-slice never runs there: the `vm-test` job boots Mac OS X 10.9.5 with `Mavergreen/mavericks-vm`,
-installs the built pkg and runs `build/check-release-on-10.9.sh` with the x86_64 `ninja_test`, which
-also launches the updater check-only. Publishing waits for it.
+Neither slice runs on the Linux build host. The `vm-test` job boots Mac OS X 10.9.5 with
+`Mavergreen/mavericks-vm`, installs the built pkg and runs `build/check-release-on-10.9.sh` with the
+x86_64 `ninja_test`, which also launches the updater check-only. The `modern-smoke` job installs the
+pkg on an Apple Silicon runner, runs the installed ninja, the arm64 `ninja_test` and the updater.
+Publishing waits for both.
 
 ## Declared state
 
@@ -49,6 +50,7 @@ also launches the updater check-only. Publishing waits for it.
 
 ## Conformance deviations
 
-- arm64:build/build.sh: developers and CI on Apple Silicon run this ninja to build Mavericks artifacts, so the pkg carries an arm64 (11.0) slice beside the x86_64 (10.9) one.
+- arm64:usr/local/mavergreen/ninja/bin/ninja: developers and CI on Apple Silicon run this ninja to build Mavericks artifacts, so the pkg carries an arm64 (11.0) slice beside the x86_64 (10.9) one.
+- macos-runner:release.yml:modern-smoke: the arm64 slice is installed and run on current macOS (spec: modern-slice products); exit: none while the slice ships
 - static-cxx-runtime:build/build-slice.sh: the x86_64 slice links LLVM 22's libc++ statically and uses Mavericks' system libc++abi and unwinder, matching clang22's one-ABI contract. Reconsider when the family's runtime policy changes.
 - system-cxx-runtime:build/build-slice.sh: the arm64 slice links macOS's /usr/lib/libc++.1.dylib, compiled against the MacOSX11.3 SDK's libc++ headers: no arm64 libcxx exists, and clang22-cross's runtimes are x86_64 only; revisit when an arm64 libcxx exists.
