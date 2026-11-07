@@ -25,6 +25,8 @@ rm -rf "$pr" "$scr" "$comp"; mkdir -p "$pr$(dirname "$PREFIX")" "$REPO_ROOT/dist
 rm -f "$REPO_ROOT"/dist/"$SHORT"-*.pkg
 cp -R "$STAGE" "$pr$PREFIX"
 app="${NINJA_UPDATER_APP:-$(sh "$REPO_ROOT/build/build-updater.sh")}"
+[ -d "$app" ] || { echo "package-pkg: $app does not exist -- no updater app to package" >&2; exit 1; }
+[ -x "$app/Contents/MacOS/$SHORT-updater" ] || { echo "package-pkg: $app has no executable Contents/MacOS/$SHORT-updater -- not a built updater" >&2; exit 1; }
 find "$pr" -name '._*' -delete
 sh "$SHIPYARD_SCRIPTS/stage_product.sh" --stage "$pr" --product "$SHORT" --name "ninja for Mavericks" \
   --version "$VER" --scripts-out "$scr" --updater-app "$app"
