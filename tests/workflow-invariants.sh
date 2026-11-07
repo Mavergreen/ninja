@@ -8,6 +8,7 @@ code="$(grep -v '^[[:space:]]*#' "$R")"
 line_of() { printf '%s\n' "$code" | grep -n -e "$1" | sed -n '1s/:.*//p'; }
 has() { printf '%s\n' "$code" | grep -q -e "$1"; }
 job() { printf '%s\n' "$code" | awk -v j="$1" '$0 ~ "^  "j":"{f=1;print;next} /^  [a-z][a-z-]*:$/{f=0} f'; }
+step_if() { printf '%s\n' "$1" | awk -v p="$2" '/^      - /{if(m)print i; m=0; i=""} /^      - if: |^        if: /{i=$0; sub(/^ *(- )?if: /,"",i)} index($0,p){m=1} END{if(m)print i}'; }
 
 printf '%s\n' "$code" | awk '/^  pull_request:/{f=1;next} f&&/branches:/{print;exit}' | grep -q '\[main\]' \
   || fail "release.yml must build pull requests to main: Renovate's automerge waits on that check"
@@ -49,6 +50,11 @@ for x in stand-in-feeds.sh artifact-facts.sh assert_appcast_upgradeable.sh check
   printf '%s\n' "$b" | grep -q "$x" || fail "the build job must run $x beside the pkg it made"
 done
 printf '%s\n' "$b" | grep -q 'OTOOL=$CL/bin/llvm-otool' || fail "Linux reads the pkg's Mach-O with clang22's llvm-otool"
+printf '%s\n' "$b" | grep -q 'name: ninja-binaries' || fail "the build must upload the stage and updater it packaged, so another host can repackage them byte for byte"
+bi="$(step_if "$b" 'ninja-binaries.tar')"
+[ "$bi" = "github.event_name == 'workflow_dispatch'
+github.event_name == 'workflow_dispatch'" ] \
+  || fail "the ninja-binaries tar and its upload run on workflow_dispatch alone, a release or a conversion proof dispatched on a branch, not on every push (got: $bi)"
 bb="$(line_of 'sh build/build.sh')"; t="$(line_of 'run-repo-tests.sh')"
 [ -n "$bb" ] && [ -n "$t" ] && [ "$bb" -lt "$t" ] || fail "run-repo-tests.sh must run after sh build/build.sh"
 
