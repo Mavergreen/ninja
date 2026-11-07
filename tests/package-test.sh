@@ -21,7 +21,8 @@ t="$(mktemp -d "${TMPDIR:-/tmp}/ninja-package-test.XXXXXX")"; trap 'rm -rf "$t"'
 "$SD" expand "$PKG" "$t/x" >/dev/null
 comp="$(dirname "$(grep -l "identifier=\"$IDENTIFIER\"" "$t"/x/*/PackageInfo)")"
 [ -f "$comp/Payload" ] || fail "$PKG holds no ninja component"
-mkdir "$t/root"; ( cd "$t/root" && gzip -dc "$comp/Payload" | cpio -id --quiet 2>/dev/null )
+mkdir "$t/root"; gzip -dc < "$comp/Payload" > "$t/payload.cpio" || fail "the pkg's payload must decompress"
+( cd "$t/root" && cpio -id --quiet < "$t/payload.cpio" ) || fail "cpio must extract the pkg's payload"
 P="$t/root$PREFIX"
 for f in bin/ninja share/doc/ninja/COPYING mavergreen.plist; do [ -s "$P/$f" ] || fail "the pkg must install $PREFIX/$f"; done
 cmp -s "$P/bin/ninja" "$STAGE/bin/ninja" || fail "the pkg's ninja must be the one build.sh gated"
