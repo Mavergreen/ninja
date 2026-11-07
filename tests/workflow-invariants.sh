@@ -4,7 +4,7 @@ set -eu
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 R="$ROOT/.github/workflows/release.yml"
 fail() { echo "FAIL: $1"; exit 1; }
-code="$(grep -v '^[[:space:]]*#' "$R")"
+code="$(grep -v '^[[:space:]]*#' "$R" | sed 's/[[:space:]]#.*$//')"
 line_of() { printf '%s\n' "$code" | grep -n -e "$1" | sed -n '1s/:.*//p'; }
 has() { printf '%s\n' "$code" | grep -q -e "$1"; }
 job() { printf '%s\n' "$code" | awk -v j="$1" '$0 ~ "^  "j":"{f=1;print;next} /^  [a-z][a-z-]*:$/{f=0} f'; }
@@ -41,6 +41,14 @@ printf '%s\n' "$ms" | grep -q 'build/smoke.sh /usr/local/mavergreen/bin/ninja' |
 printf '%s\n' "$ms" | grep -q 'build/launch-updater.sh' || fail "modern-smoke must launch the Linux-built updater on Apple Silicon"
 grep -q 'launch-updater.sh' "$ROOT/build/check-release-on-10.9.sh" || fail "the 10.9 check must launch the Linux-built updater"
 if printf '%s\n' "$ms" | grep -q 'SPARKLE_PRIVATE_KEY'; then fail "the macOS job never sees the signing key"; fi
+guard="github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name != github.repository || startsWith(github.head_ref, 'renovate/')"
+for j in vm-test modern-smoke; do
+  jj="$(job "$j")"
+  if printf '%s\n' "$jj" | grep -q 'continue-on-error'; then fail "$j must fail the run when it fails: no continue-on-error on the job or a step"; fi
+  [ "$(printf '%s\n' "$jj" | sed -n 's/^    if: //p')" = "$guard" ] || fail "$j may skip only a fork's pull request: its if: must be the fork-PR guard alone"
+  if printf '%s\n' "$jj" | grep -q -e '^      - if: ' -e '^        if: '; then fail "$j's steps run unconditionally: a skipped step is a smoke that did not run"; fi
+done
+if has 'secrets: inherit'; then fail "no job inherits every secret: the signing key reaches the build's signing step and scan alone"; fi
 pub="$(job publish)"
 for j in build vm-test modern-smoke scan; do
   printf '%s\n' "$pub" | grep 'needs:' | grep -q "[[ ]$j[],]" || fail "publish must wait for $j"
