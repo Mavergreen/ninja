@@ -20,7 +20,7 @@ for s in $slices; do
   rm -rf "$WORK/updater-$a"
   "$SC" -S "$REPO_ROOT" -B "$WORK/updater-$a" -DCMAKE_TOOLCHAIN_FILE="$TC" -DCMAKE_OSX_ARCHITECTURES="$a" \
     -DCMAKE_OBJC_COMPILER="$CL/bin/clang" -DCMAKE_OBJC_COMPILER_TARGET="$a-apple-macos$floor" \
-    -DCMAKE_OBJC_FLAGS=--no-default-config -DCMAKE_EXE_LINKER_FLAGS=-fuse-ld=lld >&2
+    -DCMAKE_OBJC_FLAGS=--no-default-config -DCMAKE_EXE_LINKER_FLAGS="-fuse-ld=lld --ld-path=$CL/bin/ld64.lld" >&2
   "$SC" --build "$WORK/updater-$a" >&2
 done
 out="$WORK/updater/ninja-updater.app"; rm -rf "$out"; mkdir -p "$WORK/updater"
